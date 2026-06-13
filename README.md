@@ -1,4 +1,4 @@
-# PickleLab - Sports Analytics
+# Pickleball -  Sports Analytics
 
 Sistema de tracking y análisis de datos deportivos para pickleball usando visión por computadora e inteligencia artificial.
 
