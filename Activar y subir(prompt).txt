@@ -1,0 +1,21 @@
+ACTIVAR EL ENTORNO:
+
+1.- cd C:\picklelab_app
+
+2.- conda activate picklelab
+
+
+
+
+
+EJECUTAR EL PROGRAMA: 
+
+python C:\picklelab_app\analisis.py
+
+
+
+
+
+COMMIT AND PUSH
+
+git pushall
