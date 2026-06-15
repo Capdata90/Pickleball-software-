@@ -40,9 +40,9 @@ COLOR_PERSON = (0, 255, 0)        # Verde
 COLOR_TRAJECTORY = (255, 200, 0)  # Cyan
 COLOR_SPEED = (0, 255, 255)       # Amarillo
 
-# Rango HSV para pelota amarilla
-HSV_YELLOW_MIN = [32, 76, 71]
-HSV_YELLOW_MAX = [76, 255, 255]
+# Rango HSV para pelota amarilla (Ajustado para tu video corto)
+HSV_YELLOW_MIN = [20, 140, 160]
+HSV_YELLOW_MAX = [36, 255, 255]
 
 # Crear directorios si no existen
 for directory in [RAW_VIDEOS_DIR, PROCESSED_VIDEOS_DIR, 

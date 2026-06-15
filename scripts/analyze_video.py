@@ -33,7 +33,7 @@ def main():
     speed_analyzer = SpeedAnalyzer(calibrator.homography_matrix, fps=30)
     
     # 3. Abrir video de entrada
-    video_path = RAW_VIDEOS_DIR / "partido.mp4"
+    video_path = RAW_VIDEOS_DIR / "partido_corto.mp4"
     if not video_path.exists():
         print(f"Error: No existe el video en {video_path}")
         return
@@ -54,6 +54,8 @@ def main():
     print("\nProcesando video...")
     frame_num = 0
     start_time = time.time()
+
+    frames_without_detection = 0
     
     while True:
         ret, frame = cap.read()
@@ -69,8 +71,15 @@ def main():
         # Tracking
         if ball_center:
             ball_smooth = tracker.update(ball_center)
+            frames_without_detection = 0
         else:
             ball_smooth = tracker.update(None)
+            frames_without_detection += 1
+            
+            # Si pasan 15 frames sin detectar, reiniciar el tracker
+            if frames_without_detection > 15:
+                tracker.reset()
+                ball_smooth = None
         
         # Análisis de velocidad
         speed = 0.0

@@ -1,21 +1,24 @@
-ACTIVAR EL ENTORNO:
+# Activar entorno
+cd C:\picklelab_app
+conda activate picklelab
 
-1.- cd C:\picklelab_app
+# Navegar al proyecto
+cd C:\picklelab_app
 
-2.- conda activate picklelab
-
-
-
-
-
-EJECUTAR EL PROGRAMA: 
-
-python C:\picklelab_app\analisis.py
-
-
-
-
-
-COMMIT AND PUSH
-
+# Subir cambios a GitHub
 git pushall
+
+# Ver estado de Git
+git status
+
+# Ver archivos
+dir
+
+
+INSTALAR DEPENDENCIAS (LIBRERIA)
+pip install opencv-python ultralytics numpy
+
+
+MENÚ
+
+python main.py

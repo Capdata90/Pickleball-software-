@@ -6,33 +6,28 @@ from tkinter import Tk, filedialog
 def encontrar_color_pelota():
     print("=== AJUSTAR COLOR DE PELOTA ===")
     
-    # Abrir selector de archivos
-    root = Tk()
-    root.withdraw()
-    root.attributes('-topmost', True)
-    video_path = filedialog.askopenfilename(
-        title="Selecciona tu video de partido",
-        filetypes=[("MP4 files", "*.mp4"), ("All files", "*.*")]
-    )
-    root.destroy()
-    
-    if not video_path:
-        print("No seleccionaste ningún video")
-        return
-    
-    print(f"Video seleccionado: {video_path}")
+    # Cargar video corto directamente
+    video_path = "data/raw/partido_corto.mp4"
+    print(f"Video: {video_path}")
     
     # Cargar frame
     cap = cv2.VideoCapture(video_path)
-    cap.set(cv2.CAP_PROP_POS_FRAMES, 1000)  # Frame 1000
+    
+    if not cap.isOpened():
+        print(f"Error: No se pudo abrir {video_path}")
+        return
+    
+    cap.set(cv2.CAP_PROP_POS_FRAMES, 300)  # Frame 200 (ajusta si necesitas)
     ret, frame = cap.read()
     cap.release()
     
-    if not ret:
+    if not ret or frame is None:
         print("No se pudo leer el frame")
         return
     
-    # Resto del código igual...
+    print(f"Frame cargado: {frame.shape}")
+    
+    # Convertir a HSV
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     
     def nothing(x):
