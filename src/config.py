@@ -26,7 +26,7 @@ CUSTOM_MODEL = MODELS_DIR / "pickleball_custom.pt"
 VIDEO_FPS = 30
 
 # Umbrales de detección
-BALL_CONFIDENCE_THRESHOLD = 0.15
+BALL_CONFIDENCE_THRESHOLD = 0.5
 PERSON_CONFIDENCE_THRESHOLD = 0.5
 
 # Dimensiones oficiales de la cancha (metros)
@@ -41,8 +41,8 @@ COLOR_TRAJECTORY = (255, 200, 0)  # Cyan
 COLOR_SPEED = (0, 255, 255)       # Amarillo
 
 # Rango HSV para pelota amarilla
-HSV_YELLOW_MIN = [20, 100, 150]
-HSV_YELLOW_MAX = [35, 255, 255]
+HSV_YELLOW_MIN = [32, 76, 71]
+HSV_YELLOW_MAX = [76, 255, 255]
 
 # Crear directorios si no existen
 for directory in [RAW_VIDEOS_DIR, PROCESSED_VIDEOS_DIR, 
