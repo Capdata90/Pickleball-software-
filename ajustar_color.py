@@ -1,16 +1,30 @@
 # ajustar_color.py
 import cv2
 import numpy as np
+from tkinter import Tk, filedialog
 
 def encontrar_color_pelota():
     print("=== AJUSTAR COLOR DE PELOTA ===")
-    print("1. Abre el frame donde se vea bien la pelota")
-    print("2. Ajusta los sliders hasta que SOLO la pelota se vea blanca")
-    print("3. Anota los valores H-min, S-min, V-min y H-max, S-max, V-max")
     
-    # Cargar un frame del video
-    cap = cv2.VideoCapture("data/raw/partido.mp4")
-    cap.set(cv2.CAP_PROP_POS_FRAMES, 1000)  # Frame 1000 (ajusta si quieres)
+    # Abrir selector de archivos
+    root = Tk()
+    root.withdraw()
+    root.attributes('-topmost', True)
+    video_path = filedialog.askopenfilename(
+        title="Selecciona tu video de partido",
+        filetypes=[("MP4 files", "*.mp4"), ("All files", "*.*")]
+    )
+    root.destroy()
+    
+    if not video_path:
+        print("No seleccionaste ningún video")
+        return
+    
+    print(f"Video seleccionado: {video_path}")
+    
+    # Cargar frame
+    cap = cv2.VideoCapture(video_path)
+    cap.set(cv2.CAP_PROP_POS_FRAMES, 1000)  # Frame 1000
     ret, frame = cap.read()
     cap.release()
     
@@ -18,10 +32,9 @@ def encontrar_color_pelota():
         print("No se pudo leer el frame")
         return
     
-    # Convertir a HSV
+    # Resto del código igual...
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     
-    # Sliders
     def nothing(x):
         pass
     
@@ -45,15 +58,13 @@ def encontrar_color_pelota():
         upper = np.array([h_max, s_max, v_max])
         
         mask = cv2.inRange(hsv, lower, upper)
-        
-        # Mostrar resultado
         result = cv2.bitwise_and(frame, frame, mask=mask)
         
         cv2.imshow("Original", frame)
         cv2.imshow("Mascara (blanco = detectado)", mask)
         cv2.imshow("Resultado", result)
         
-        print(f"\rValores actuales: H[{h_min}-{h_max}] S[{s_min}-{s_max}] V[{v_min}-{v_max}]", end="")
+        print(f"\rValores: H[{h_min}-{h_max}] S[{s_min}-{s_max}] V[{v_min}-{v_max}]", end="")
         
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q'):
