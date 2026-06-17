@@ -1,238 +1,50 @@
-# Byte-compiled / optimized / DLL files
+# ==========================================
+# PYTHON & ENTORNOS (Estándar)
+# ==========================================
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
-
-# Distribution / packaging
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# PyInstaller
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py.cover
-.hypothesis/
-.pytest_cache/
-cover/
-
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-.pybuilder/
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-.python-version
-
-# pipenv
-Pipfile.lock
-
-# poetry
-poetry.lock
-poetry.toml
-
-# pdm
-pdm.lock
-pdm.toml
-.pdm-python
-.pdm-build/
-
-# pixi
-pixi.lock
-.pixi
-
-# PEP 582
-pypackages/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# Redis
-*.rdb
-*.aof
-*.pid
-
-# RabbitMQ
-mnesia/
-rabbitmq/
-rabbitmq-data/
-
-# ActiveMQ
-activemq-data/
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.env
-.envrc
-.venv
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
-# PyCharm
+.venv/
+.env
+.envrc
 .idea/
-
-# Abstra
-.abstra/
-
-# Visual Studio Code
 .vscode/
-
-# Temporary file for partial code execution
-tempCodeRunnerFile.py
-
-# Ruff stuff:
-.ruff_cache/
-
-# PyPI configuration file
-.pypirc
-
-# Marimo
-marimo/_static/
-marimo/_lsp/
-marimo/
-
-# Streamlit
-.streamlit/secrets.toml
-
-# ==========================================
-# PICKLELAB - Archivos que NO deben subirse
-# ==========================================
-
-# Datos pesados (Videos y Datasets)
-data/raw/
-data/dataset/
-data/processed/
-data/calibration/
-
-# Modelos y resultados de entrenamiento (Ultralytics)
-models/
-runs/
-
-# Scripts temporales
-descargar_dataset.py
-
-# Archivos de video temporales
-*.webm
-
-# Archivos de video de salida
-*.avi
-*.mov
-*.mkv
-
-# Notebooks de Jupyter (si los usas)
-*.ipynb_checkpoints
-
-# Logs
+.ipynb_checkpoints/
+.pytest_cache/
+.coverage
 *.log
+dist/
+build/
+*.egg-info/
 
 # ==========================================
-# PICKLELAB - Archivos que NO deben subirse
+# PICKLELAB - NO SUBIR AL REPOSITORIO
 # ==========================================
-
-# Datos pesados (Videos y Datasets)
+# Videos crudos y procesados
 data/raw/
-data/dataset/
 data/processed/
+*.webm
+*.avi
+*.mov
+*.mkv
+
+# Dataset de entrenamiento (5k imágenes)
+data/dataset/
+
+# Calibraciones locales
 data/calibration/
 
-# Modelos y resultados de entrenamiento (Ultralytics)
+# Modelos y resultados de Ultralytics
 models/
 runs/
 
 # Scripts temporales
 descargar_dataset.py
-
-# Archivos de video temporales
-*.webm
-*.avi
-*.mov
-*.mkv
+tempCodeRunnerFile.py
