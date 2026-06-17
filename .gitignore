@@ -213,3 +213,26 @@ descargar_dataset.py
 
 # Logs
 *.log
+
+# ==========================================
+# PICKLELAB - Archivos que NO deben subirse
+# ==========================================
+
+# Datos pesados (Videos y Datasets)
+data/raw/
+data/dataset/
+data/processed/
+data/calibration/
+
+# Modelos y resultados de entrenamiento (Ultralytics)
+models/
+runs/
+
+# Scripts temporales
+descargar_dataset.py
+
+# Archivos de video temporales
+*.webm
+*.avi
+*.mov
+*.mkv
