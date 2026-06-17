@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 1
+names: ['ball']
+
+roboflow:
+  workspace: harshita-wafmq
+  project: pickleball-ball-tracking-9s7d6
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/harshita-wafmq/pickleball-ball-tracking-9s7d6/dataset/1

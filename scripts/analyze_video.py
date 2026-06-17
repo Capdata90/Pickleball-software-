@@ -33,7 +33,7 @@ def main():
     speed_analyzer = SpeedAnalyzer(calibrator.homography_matrix, fps=30)
     
     # 3. Abrir video de entrada
-    video_path = RAW_VIDEOS_DIR / "partido_corto.mp4"
+    video_path = RAW_VIDEOS_DIR / "partido1.mp4"
     if not video_path.exists():
         print(f"Error: No existe el video en {video_path}")
         return
