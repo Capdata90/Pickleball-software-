@@ -20,14 +20,14 @@ CALIBRATION_DIR = DATA_DIR / "calibration"
 # Archivos importantes
 HOMOGRAPHY_FILE = CALIBRATION_DIR / "homography_matrix.npy"
 DEFAULT_MODEL = MODELS_DIR / "yolov8n.pt"
-CUSTOM_MODEL = MODELS_DIR / "pickleball_custom.pt"
+CUSTOM_MODEL = MODELS_DIR / "pickleball_ball_trained.pt"
 
 # Parámetros de video
 VIDEO_FPS = 30
 
 # Umbrales de detección
 BALL_CONFIDENCE_THRESHOLD = 0.5
-PERSON_CONFIDENCE_THRESHOLD = 0.5
+PERSON_CONFIDENCE_THRESHOLD = 0.35
 
 # Dimensiones oficiales de la cancha (metros)
 COURT_WIDTH_METERS = 6.10

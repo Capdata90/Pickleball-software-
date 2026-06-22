@@ -1,96 +1,115 @@
 # src/tracking.py
-import cv2
 import numpy as np
+import cv2
 from collections import deque
 
 class KalmanBallTracker:
-    """
-    Filtro de Kalman para suavizar la trayectoria de la pelota
-    y predecir su posición cuando se pierde la detección.
-    Estado: [x, y, vx, vy] (posición y velocidad en píxeles)
-    """
-    
-    def __init__(self, process_noise=1e-2, measurement_noise=5.0):
-        # 4 variables de estado (x, y, vx, vy), 2 variables medidas (x, y)
+    def __init__(self):
+        self.kalman = None
+        self.predicted = None
+        self.history = deque(maxlen=30)  # Últimos 30 frames
+        self.positions = []
+        self.frame_count = 0
+        self.consecutive_misses = 0
+        
+        # Parámetros de validación
+        self.max_distance = 300  # Distancia máxima desde la predicción (píxeles)
+        self.max_misses = 20 
+        self.reset()
+
+    def reset(self):
+        """Reiniciar el tracker"""
+        self.kalman = None
+        self.history.clear()
+        self.positions = []
+        self.frame_count = 0
+        self.consecutive_misses = 0
+
+    def _init_kalman(self, measurement):
+        """Inicializar el filtro de Kalman"""
         self.kalman = cv2.KalmanFilter(4, 2)
         
-        # Matriz de transición (modelo de movimiento constante)
+        # Matriz de transición de estado [x, y, vx, vy]
         self.kalman.transitionMatrix = np.array([
             [1, 0, 1, 0],
             [0, 1, 0, 1],
             [0, 0, 1, 0],
             [0, 0, 0, 1]
-        ], dtype=np.float32)
+        ], np.float32)
         
-        # Matriz de medición (solo medimos x, y)
+        # Matriz de medición
         self.kalman.measurementMatrix = np.array([
             [1, 0, 0, 0],
             [0, 1, 0, 0]
-        ], dtype=np.float32)
+        ], np.float32)
         
-        # Ruido del proceso (qué tanto confiamos en nuestro modelo de movimiento)
-        self.kalman.processNoiseCov = np.eye(4, dtype=np.float32) * process_noise
+        # Ruido del proceso
+        self.kalman.processNoiseCov = np.eye(4, dtype=np.float32) * 0.03
         
-        # Ruido de la medición (qué tanto confiamos en la detección de la cámara)
-        self.kalman.measurementNoiseCov = np.eye(2, dtype=np.float32) * measurement_noise
+        # Ruido de medición
+        self.kalman.measurementNoiseCov = np.eye(2, dtype=np.float32) * 0.5
         
-        # Covarianza del error inicial
-        self.kalman.errorCovPost = np.eye(4, dtype=np.float32)
-        
-        self.initialized = False
-        self.history = deque(maxlen=30)  # Guardar los últimos 30 puntos
-    
-    def update(self, measurement=None):
+        # Estado inicial (CORREGIDO para evitar el error de NumPy)
+        self.kalman.statePre = np.zeros((4, 1), np.float32)
+        self.kalman.statePre[0] = measurement[0]
+        self.kalman.statePre[1] = measurement[1]
+
+    def update(self, ball_center):
         """
-        Actualiza el filtro de Kalman.
-        measurement: tupla (x, y) en píxeles, o None si no hay detección.
-        Retorna: (x, y) suavizado o predicho.
+        Actualizar el tracker con la nueva detección.
+        Retorna: posición suavizada o None
         """
-        if measurement is not None:
-            meas = np.array([[np.float32(measurement[0])],
-                             [np.float32(measurement[1])]])
+        self.frame_count += 1
+        
+        if ball_center is None:
+            self.consecutive_misses += 1
             
-            if not self.initialized:
-                # Inicializar el estado con la primera medición
-                self.kalman.statePost[:2] = meas
-                self.initialized = True
+            # Si no hay detección pero tenemos Kalman, usar predicción
+            if self.kalman is not None and self.consecutive_misses < 10:
+                self.predicted = self.kalman.predict()
+                return (int(self.predicted[0]), int(self.predicted[1]))
             else:
-                # Corregir la predicción con la nueva medición
-                self.kalman.correct(meas)
+                return None
         
-        # Predecir la siguiente posición
-        prediction = self.kalman.predict()
+        x, y = ball_center
+        measurement = np.array([[x], [y]], np.float32)
         
-        x, y = int(prediction[0, 0]), int(prediction[1, 0])
+        # Si es la primera detección, inicializar Kalman
+        if self.kalman is None:
+            self._init_kalman(measurement)
+            self.history.append((x, y))
+            self.positions.append((x, y, self.frame_count))
+            self.consecutive_misses = 0
+            return (x, y)
         
-        # Guardar en el historial
-        self.history.append((x, y))
+        # Predecir posición
+        self.predicted = self.kalman.predict()
+        pred_x, pred_y = int(self.predicted[0]), int(self.predicted[1])
         
-        return (x, y)
-    
-    def get_velocity(self, fps=30):
-        """
-        Calcula la velocidad actual en píxeles/segundo usando el historial.
-        """
-        if len(self.history) < 5:
-            return (0.0, 0.0)
+        # Calcular distancia desde la predicción
+        distance = np.sqrt((x - pred_x)**2 + (y - pred_y)**2)
         
-        # Usar los últimos 5 frames para calcular la velocidad
-        recent = list(self.history)[-5:]
-        x0, y0 = recent[0]
-        x1, y1 = recent[-1]
+        # VALIDACIÓN: Si la detección está muy lejos de la predicción, rechazarla
+        if distance > self.max_distance:
+            # print(f"️ Detección rechazada (distancia: {distance:.1f} > {self.max_distance})")
+            self.consecutive_misses += 1
+            return (pred_x, pred_y)
         
-        dt = len(recent) / fps
-        if dt == 0:
-            return (0.0, 0.0)
-            
-        vx = (x1 - x0) / dt
-        vy = (y1 - y0) / dt
+        # Actualizar Kalman con la medición
+        self.kalman.correct(measurement)
         
-        return (vx, vy)
-    
-    def reset(self):
-        """Reinicia el tracker para una nueva pelota o secuencia."""
-        self.initialized = False
-        self.history.clear()
-        self.kalman.statePost = np.zeros((4, 1), dtype=np.float32)
+        # Obtener posición corregida
+        corrected = self.kalman.statePost
+        corr_x, corr_y = int(corrected[0]), int(corrected[1])
+        
+        # Guardar en historial
+        self.history.append((corr_x, corr_y))
+        self.positions.append((corr_x, corr_y, self.frame_count))
+        
+        # Limitar el tamaño de positions
+        if len(self.positions) > 60:
+            self.positions.pop(0)
+        
+        self.consecutive_misses = 0
+        
+        return (corr_x, corr_y)

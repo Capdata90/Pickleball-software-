@@ -1,4 +1,4 @@
-# scripts/02_analyze_video.py
+# scripts/analyze_video.py
 import cv2
 import sys
 from pathlib import Path
@@ -21,9 +21,9 @@ def main():
     calibrator = CourtCalibrator()
     try:
         calibrator.load_calibration()
-        print("Calibración cargada correctamente.")
+        print("✅ Calibración cargada correctamente.")
     except FileNotFoundError:
-        print("Error: No se encontró la calibración. Ejecuta primero 01_calibrate.py")
+        print("❌ Error: No se encontró la calibración. Ejecuta primero 01_calibrate.py")
         return
     
     # 2. Inicializar módulos
@@ -35,7 +35,7 @@ def main():
     # 3. Abrir video de entrada
     video_path = RAW_VIDEOS_DIR / "partido1.mp4"
     if not video_path.exists():
-        print(f"Error: No existe el video en {video_path}")
+        print(f"❌ Error: No existe el video en {video_path}")
         return
     
     cap = cv2.VideoCapture(str(video_path))
@@ -44,24 +44,41 @@ def main():
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     
-    print(f"Video: {width}x{height} @ {fps}fps | Frames: {total_frames}")
+    print(f"📹 Video: {width}x{height} @ {fps}fps | Frames: {total_frames}")
     
     # 4. Configurar video de salida
-    output_path = PROCESSED_VIDEOS_DIR / "partido_anotado.mp4"
+    output_path = PROCESSED_VIDEOS_DIR / "partido_20s.mp4"
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
     
-    print("\nProcesando video...")
+    print("\n⏳ Procesando video (primeros 20 segundos)...")
     frame_num = 0
     start_time = time.time()
-
     frames_without_detection = 0
+    
+    # Calcular cuántos frames son 20 segundos
+    max_frames = int(fps * 20)
+    
+    # OPTIMIZACIÓN: Procesar solo 1 de cada 3 frames para acelerar
+    skip_frames = 5
     
     while True:
         ret, frame = cap.read()
         if not ret:
             break
+            
+        # Detener el análisis si pasamos los 20 segundos
+        if frame_num >= max_frames:
+            print(f"⏹️ Límite de 20 segundos alcanzado ({max_frames} frames).")
+            break
         
+        # Saltar frames para acelerar (procesar solo 1 de cada 3)
+        if frame_num % skip_frames != 0:
+            # Escribir el frame sin procesar para mantener el video completo
+            out.write(frame)
+            frame_num += 1
+            continue
+            
         timestamp = frame_num / fps
         
         # 5. Pipeline de procesamiento
@@ -81,14 +98,15 @@ def main():
                 tracker.reset()
                 ball_smooth = None
         
-        # Análisis de velocidad
+        # Análisis de velocidad (se calcula pero NO se dibuja en el video)
         speed = 0.0
         if ball_smooth:
             speed_analyzer.add_position(ball_smooth[0], ball_smooth[1], timestamp)
             speed = speed_analyzer.calculate_speed()
         
         # 6. Visualización
-        frame = annotator.draw_ball(frame, ball_smooth, speed)
+        # Pasamos 0.0 para no dibujar la velocidad en el video (irá en el PDF después)
+        frame = annotator.draw_ball(frame, ball_smooth, 0.0)
         frame = annotator.draw_trajectory(frame, tracker.history)
         
         for i, person in enumerate(detections["persons"]):
@@ -103,19 +121,19 @@ def main():
         
         # Mostrar progreso
         frame_num += 1
-        if frame_num % 100 == 0:
+        if frame_num % 30 == 0:
             elapsed = time.time() - start_time
-            fps_real = 100 / elapsed if elapsed > 0 else 0
-            print(f"  Frame {frame_num}/{total_frames} ({fps_real:.1f} fps reales)")
+            fps_real = 30 / elapsed if elapsed > 0 else 0
+            print(f"  Frame {frame_num}/{max_frames} ({fps_real:.1f} fps reales)")
     
     # 7. Limpieza
     cap.release()
     out.release()
     cv2.destroyAllWindows()
     
-    print(f"\nAnálisis completado.")
-    print(f"Video guardado en: {output_path}")
-    print(f"Tiempo total: {time.time() - start_time:.1f}s")
+    print(f"\n✅ Análisis completado.")
+    print(f" Video guardado en: {output_path}")
+    print(f"⏱️ Tiempo total: {time.time() - start_time:.1f}s")
 
 if __name__ == "__main__":
     main()

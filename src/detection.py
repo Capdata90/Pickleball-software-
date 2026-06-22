@@ -5,127 +5,151 @@ from ultralytics import YOLO
 from src import config
 
 class BallAndPlayerDetector:
-    """
-    Detecta pelotas de pickleball y jugadores.
-    Usa YOLO + detección por color HSV.
-    """
-    
-    def __init__(self, model_path=None):
-        if model_path is None:
-            model_path = config.DEFAULT_MODEL
+    def __init__(self):
+        # Modelo para detectar jugadores (personas) - clase 0 = person
+        self.model_persons = YOLO("yolo11n.pt")
         
-        self.model = YOLO(model_path)
-        self.hsv_min = np.array(config.HSV_YELLOW_MIN)
-        self.hsv_max = np.array(config.HSV_YELLOW_MAX)
-    
-    def detect_color_ball(self, frame):
+        # Modelo local entrenado para pelota de pickleball
+        self.model_ball = YOLO("models/pickleball_ball_trained.pt")
+        
+        # Configuración más agresiva para detectar la pelota
+        self.ball_confidence = 0.15
+        self.min_ball_size = 6
+        self.max_ball_size = 60
+        self.min_aspect_ratio = 0.6
+        self.max_aspect_ratio = 1.4
+        
+        # Filtro de consistencia temporal
+        self.ball_detection_history = []
+        self.min_consecutive_detections = 2
+        
+        print("✅ Detector inicializado:")
+        print("   - YOLO11n (personas)")
+        print("   - Modelo local (pelota) con imgsz=320")
+
+    def _is_consistent_detection(self, cx, cy):
         """
-        Detecta pelota amarilla usando color HSV.
-        Retorna: (cx, cy) o None, y el área.
+        Verifica si la detección es consistente con las últimas detecciones.
         """
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        mask = cv2.inRange(hsv, self.hsv_min, self.hsv_max)
+        self.ball_detection_history.append((cx, cy))
         
-        # Limpieza morfológica
-        kernel = np.ones((3, 3), np.uint8)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-        mask = cv2.GaussianBlur(mask, (5, 5), 0)
+        # Mantener solo las últimas 5 detecciones
+        if len(self.ball_detection_history) > 5:
+            self.ball_detection_history.pop(0)
         
-        # Buscar contornos
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, 
-                                       cv2.CHAIN_APPROX_SIMPLE)
+        # Si no hay suficientes detecciones previas, aceptar
+        if len(self.ball_detection_history) < self.min_consecutive_detections:
+            return True
         
-        for contour in contours:
-            area = cv2.contourArea(contour)
-            
-            # Filtrar por tamaño (MUY permisivo para diagnóstico en video 360p)
-            if 3 < area < 300:
-                # Verificar circularidad
-                perimeter = cv2.arcLength(contour, True)
-                if perimeter == 0:
-                    continue
-                
-                circularity = 4 * np.pi * area / (perimeter * perimeter)
-                
-                # Relajado para detectar pelotas pequeñas/borrosas
-                if circularity > 0.3:
-                    x, y, w, h = cv2.boundingRect(contour)
-                    cx, cy = x + w // 2, y + h // 2
-                    
-                    # Filtrar por posición (ignorar el 20% superior de la pantalla)
-                    h_frame, w_frame = frame.shape[:2]
-                    if cy < h_frame * 0.2:
-                        continue
-                    
-                    return (cx, cy), area
+        # Calcular distancia promedio con las detecciones anteriores
+        distances = []
+        for prev_cx, prev_cy in self.ball_detection_history[:-1]:
+            dist = np.sqrt((cx - prev_cx)**2 + (cy - prev_cy)**2)
+            distances.append(dist)
         
-        return None, 0
-    
-    def detect_with_yolo(self, frame):
-        """
-        Detecta con YOLO (personas y pelotas).
-        Retorna: dict con boxes, clases y confianzas.
-        """
-        results = self.model(frame, verbose=False)
+        avg_distance = np.mean(distances)
         
-        detections = {
-            "balls": [],
-            "persons": []
-        }
-        
-        if results[0].boxes is None:
-            return detections
-        
-        boxes = results[0].boxes.xyxy.cpu().numpy()
-        confs = results[0].boxes.conf.cpu().numpy()
-        classes = results[0].boxes.cls.cpu().numpy().astype(int)
-        
-        for box, conf, cls in zip(boxes, confs, classes):
-            x1, y1, x2, y2 = map(int, box)
-            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-            
-            class_name = self.model.names[cls]
-            
-            if class_name == "sports ball" and conf > config.BALL_CONFIDENCE_THRESHOLD:
-                detections["balls"].append({
-                    "bbox": (x1, y1, x2, y2),
-                    "center": (cx, cy),
-                    "confidence": conf
-                })
-            
-            elif class_name == "person" and conf > config.PERSON_CONFIDENCE_THRESHOLD:
-                # Verificar proporción (persona es más alta que ancha)
-                height = y2 - y1
-                width = x2 - x1
-                aspect_ratio = height / width if width > 0 else 0
-                
-                if aspect_ratio > 1.2:  # Persona vertical
-                    detections["persons"].append({
-                        "bbox": (x1, y1, x2, y2),
-                        "center": (cx, cy),
-                        "confidence": conf
-                    })
-        
-        return detections
-    
+        # Si la distancia promedio es menor a 300 píxeles, es consistente
+        return avg_distance < 300
+
     def detect_fused(self, frame):
         """
-        Fusión de YOLO + Color.
-        Prioriza YOLO, usa color como respaldo.
+        Detecta jugadores con YOLO y pelota con modelo local entrenado.
+        Retorna: ball_center, detections_dict, method_used
         """
-        # Detección YOLO
-        yolo_dets = self.detect_with_yolo(frame)
+        detections = {"persons": [], "ball": None}
+        ball_center = None
+        method = "fused"
         
-        # Detección por color
-        color_ball, area = self.detect_color_ball(frame)
+        frame_height, frame_width = frame.shape[:2]
         
-        # Fusión
-        if yolo_dets["balls"]:
-            # Usar detección de YOLO si existe
-            best_ball = max(yolo_dets["balls"], key=lambda x: x["confidence"])
-            return best_ball["center"], yolo_dets, "yolo"
-        elif color_ball:
-            # Usar detección por color
-            return color_ball, yolo_dets, "color"
-        else:
-            return None, yolo_dets, None
+        # ==========================================
+        # 1. DETECTAR JUGADORES CON YOLO
+        # ==========================================
+        results_persons = self.model_persons(frame, classes=[0], verbose=False)
+        
+        for result in results_persons:
+            for box in result.boxes:
+                x1, y1, x2, y2 = box.xyxy[0].tolist()
+                conf = float(box.conf[0])
+                
+                # Calcular centro del jugador
+                cx = (x1 + x2) / 2
+                cy = (y1 + y2) / 2
+                
+                # VALIDACIÓN: Filtrar espectadores y árbitro
+                # - cy < 15% superior: gradas
+                # - cx < 8% o cx > 92%: laterales extremos (árbitro/banderines)
+                if cy < frame_height * 0.15:
+                    continue
+                if cx < frame_width * 0.08 or cx > frame_width * 0.92:
+                    continue
+                
+                detections["persons"].append({
+                    "bbox": [int(x1), int(y1), int(x2), int(y2)],
+                    "confidence": conf
+                })
+        
+        # ==========================================
+        # 2. DETECTAR PELOTA CON MODELO LOCAL (imgsz=320 para velocidad)
+        # ==========================================
+        results_ball = self.model_ball(
+            frame, 
+            verbose=False, 
+            conf=self.ball_confidence,
+            imgsz=320
+        )
+        
+        best_ball = None
+        best_confidence = 0
+        
+        for result in results_ball:
+            for box in result.boxes:
+                x1, y1, x2, y2 = box.xyxy[0].tolist()
+                conf = float(box.conf[0])
+                
+                # Calcular centro y tamaño
+                cx = int((x1 + x2) / 2)
+                cy = int((y1 + y2) / 2)
+                width = x2 - x1
+                height = y2 - y1
+                
+                # VALIDACIÓN 1: Filtrar logo de la esquina inferior derecha
+                if cx > frame_width * 0.75 and cy > frame_height * 0.75:
+                    continue
+                
+                # VALIDACIÓN 2: Filtrar zona de espectadores (15% superior)
+                if cy < frame_height * 0.15:
+                    continue
+                
+                # VALIDACIÓN 3: Tamaño razonable de pelota
+                if width < self.min_ball_size or width > self.max_ball_size:
+                    continue
+                if height < self.min_ball_size or height > self.max_ball_size:
+                    continue
+                
+                # VALIDACIÓN 4: Relación de aspecto (aproximadamente cuadrada)
+                aspect_ratio = width / max(height, 1)
+                if aspect_ratio < self.min_aspect_ratio or aspect_ratio > self.max_aspect_ratio:
+                    continue
+                
+                # VALIDACIÓN 5: Consistencia temporal
+                if not self._is_consistent_detection(cx, cy):
+                    continue
+                
+                # Si pasa todas las validaciones y tiene mejor confianza, guardar
+                if conf > best_confidence:
+                    best_confidence = conf
+                    best_ball = {
+                        "center": (cx, cy),
+                        "bbox": [int(x1), int(y1), int(x2), int(y2)],
+                        "confidence": conf
+                    }
+        
+        # Usar la mejor detección válida
+        if best_ball:
+            ball_center = best_ball["center"]
+            detections["ball"] = best_ball
+            method = "local_model"
+        
+        return ball_center, detections, method
